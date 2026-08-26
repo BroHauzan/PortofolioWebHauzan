@@ -1,0 +1,1033 @@
+/* ============================================================
+   apple.css — Varian portofolio bergaya Apple.
+   Prinsip diambil dari AppleDesign.md:
+   - Material translucent (backdrop-filter), depth via blur+shadow.
+   - Tipografi: tracking size-specific (heading rapat, body ~0), leading
+     tight untuk teks besar, longgar untuk body.
+   - Motion gesture-driven ditangani spring di js/apple.js (bukan di sini).
+     CSS hanya menangani micro-state (hover/press) + fallback reduced-motion.
+   File ini BARU; tidak menyentuh style.css lama.
+   ============================================================ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Warna dasar ala Apple (light) */
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --text: #ffffff;
+  --text-2: #ffffff;
+  --hair: rgba(0, 0, 0, 0.10);
+
+  --blue: #0071e3;
+  --blue-press: #0060c4;
+
+  /* Aksen kategori (dijembatani dari palet konten lama di data.js) */
+  --c-motion: #b8e33c;
+  --c-foto: #ff8a1e;
+  --c-video: #0fc2a5;
+  --c-film: #ff4d7e;
+
+  /* Material translucent */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-brd: rgba(255, 255, 255, 0.55);
+  --glass-blur: 20px;
+  --sheet-bg: rgba(245, 245, 247, 0.80);
+  --seg-track: rgba(120, 120, 128, 0.12);
+  --seg-thumb: #ffffff;
+  --fill-soft: rgba(120, 120, 128, 0.12);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 10px 44px rgba(0, 0, 0, 0.16);
+
+  --radius: 18px;
+  --radius-lg: 28px;
+  --space: clamp(1.15rem, 4vw, 3rem);
+
+  /* Easing untuk micro-state non-gesture (CSS). Gesture pakai spring JS. */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --text: #ffffff;
+    --text-2: #ffffff;
+    --hair: rgba(255, 255, 255, 0.12);
+
+    --blue: #0a84ff;
+    --blue-press: #409cff;
+
+    --glass-bg: rgba(30, 30, 32, 0.55);
+    --glass-brd: rgba(255, 255, 255, 0.10);
+    --sheet-bg: rgba(28, 28, 30, 0.80);
+    --seg-track: rgba(120, 120, 128, 0.24);
+    --seg-thumb: #48484a;
+    --fill-soft: rgba(120, 120, 128, 0.24);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-2: 0 12px 50px rgba(0, 0, 0, 0.65);
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+body {
+  /* §15: default ke system font Apple; sudah punya optical sizing & tracking. */
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 17px;             /* skala layout dalam rem/em agar ikut Dynamic Type */
+  line-height: 1.5;            /* leading body: longgar */
+  letter-spacing: 0;           /* tracking body ~ 0 */
+  color: var(--text);
+  background: var(--bg);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-optical-sizing: auto;
+}
+
+a { color: inherit; text-decoration: none; }
+
+::selection { background: color-mix(in srgb, var(--blue) 30%, transparent); }
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ---------- ambient background (Full-page canvas stage) ---------- */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--bg);
+  pointer-events: none;
+}
+
+#gradient-bg {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  border: 0;
+  display: block;
+  pointer-events: none;
+  /* Multi-stop fallback jika WebGL/NeatGradient di-skip atau file:// */
+  background: linear-gradient(135deg, #FF5772 0%, #FFC600 35%, #00B7FF 70%, #8B6AE6 100%);
+}
+
+/* ---------- material translucent utilities ---------- */
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-brd);
+}
+/* §12: permukaan besar terbaca lebih "tebal" — blur lebih kuat + shadow lebih dalam. */
+.glass-thick {
+  background: var(--sheet-bg);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border-top: 1px solid var(--glass-brd);
+}
+
+/* §14: transparansi & kontras aksesibilitas */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-thick, .nav {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .glass, .glass-thick {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid var(--text);
+  }
+}
+
+/* ---------- tipografi (§15: tracking & leading size-specific) ---------- */
+.eyebrow {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;         /* teks kecil: tracking sedikit positif */
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.hero__title {
+  font-size: clamp(2.6rem, 8vw, 5.6rem);
+  line-height: 1.03;              /* leading rapat untuk teks besar */
+  letter-spacing: -0.035em;       /* tracking negatif makin besar makin rapat */
+  font-weight: 700;
+  max-width: 16ch;
+}
+.hero__lede {
+  font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+  color: var(--text-2);
+  max-width: 40ch;
+}
+.h-section {
+  font-size: clamp(2rem, 5vw, 3.3rem);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+/* ---------- nav (translucent, konten scroll di bawahnya) ---------- */
+.nav {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.6rem 1.2rem;
+  width: max-content;
+  max-width: 90vw;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
+  backdrop-filter: blur(15px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s var(--ease-out);
+}
+
+@media (prefers-color-scheme: dark) {
+  .nav {
+    background: rgba(45, 45, 48, 0.5);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.nav.is-scrolled {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  .nav.is-scrolled {
+    background: rgba(45, 45, 48, 0.75);
+  }
+}
+.nav__logo {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  padding: 0.2rem 0.1rem;
+}
+.nav__links { display: flex; gap: 0.4rem; }
+.nav__links a {
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--text-2);
+  padding: 0.4rem 0.7rem;
+  border-radius: 980px;
+  transition: color 0.2s, background 0.2s;
+}
+.nav__links a:hover { color: var(--text); background: var(--fill-soft); }
+.nav__links a.is-active { color: var(--text); font-weight: 500; }
+@media (max-width: 560px) {
+  .nav__links a { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
+}
+
+/* ---------- buttons — Liquid Glass (4-layer per skill) ---------- */
+/* ==========================================================
+   LIQUID GLASS BUTTONS — iOS Control Center style (4-layer model)
+   1) Translucent tint + saturate(200%) to pull gradient colors
+   2) 1.5px bright rim border (glass edge)
+   3) Double inset: white top highlight + dark bottom refraction
+   4) Outer shadow for depth off the page
+   ========================================================== */
+.btn {
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.6rem;
+  border-radius: 980px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.2s ease,
+              background 0.2s ease;
+  overflow: hidden;
+  position: relative;
+}
+.btn:active { transform: scale(0.97); transition-duration: 0.08s; }
+
+/* PRIMARY — blue-tinted liquid glass over colorful gradient */
+.btn--primary {
+  color: #fff;
+  /* Layer 2: bright glass edge */
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  /* Layer 1: translucent tint + high saturation to absorb gradient beneath */
+  background: linear-gradient(
+    135deg,
+    rgba(10, 132, 255, 0.32) 0%,
+    rgba(0, 100, 230, 0.42) 100%
+  );
+  -webkit-backdrop-filter: blur(12px) saturate(200%);
+  backdrop-filter: blur(12px) saturate(200%);
+  /* Layer 3: double inset — bright top highlight + dark bottom refraction */
+  box-shadow:
+    0 5px 22px rgba(0, 0, 0, 0.26),           /* layer 4: outer depth */
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.60), /* top highlight */
+    inset 0 -1.5px 2px rgba(0, 0, 0, 0.18);     /* bottom refraction */
+}
+/* Layer 4 extra: specular sheen sweep on hover */
+.btn--primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.50) 0%,
+    rgba(255, 255, 255, 0.08) 40%,
+    transparent 60%
+  );
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+.btn--primary:hover::before { opacity: 1; }
+.btn--primary:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 132, 255, 0.42) 0%,
+    rgba(0, 100, 230, 0.52) 100%
+  );
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.32),
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.70),
+    inset 0 -1.5px 2px rgba(0, 0, 0, 0.18);
+  transform: translateY(-2px);
+}
+
+/* PLAIN — clear liquid glass, adaptive tint per color-scheme */
+.btn--plain {
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.2); 
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.05),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.15s ease;
+}
+.btn--plain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 255, 255, 0.05) 45%,
+    transparent 65%
+  );
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+.btn--plain:hover::before { opacity: 1; }
+.btn--plain:hover {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.50);
+  transform: translateY(-1px);
+}
+.btn--plain:active {
+  transform: scale(0.96);
+}
+
+/* Hero plain buttons — dark-tint glass for contrast on bright gradient */
+.hero .btn--plain {
+  background: rgba(29, 29, 31, 0.10);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  box-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.18),
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.10);
+}
+.hero .btn--plain:hover {
+  background: rgba(29, 29, 31, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 5px 22px rgba(0, 0, 0, 0.24),
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.55),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.10);
+  transform: translateY(-1px);
+}
+.hero .btn--plain:active {
+  transform: scale(0.96);
+}
+
+/* Focus visible ring — glass often hides default outline. */
+.btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+
+/* Pointer-tracked sheen — only applied when .glass-btn--interactive added.
+   Radial highlight follows cursor via --mx/--my custom props. */
+.glass-btn--interactive {
+  --mx: 50%;
+  --my: 50%;
+}
+.glass-btn--interactive::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mx) var(--my),
+    rgba(255, 255, 255, 0.35) 0%,
+    transparent 62%
+  );
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: inherit;
+}
+.glass-btn--interactive:hover::after {
+  opacity: 1;
+}
+
+/* Lightweight fallback when backdrop-filter not supported */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .btn--primary {
+    background: var(--blue);
+    box-shadow: var(--shadow-1);
+  }
+  .btn--plain {
+    background: var(--fill-soft);
+    box-shadow: none;
+  }
+  .hero .btn--plain {
+    background: rgba(29, 29, 31, 0.10);
+  }
+}
+
+/* ---------- hero (transparent, directly over full-page canvas) ---------- */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.4rem;
+  padding: 7rem var(--space) 5rem;
+  overflow: hidden;
+  /* canvas is in .ambient (fixed behind everything); hero stays transparent */
+}
+.hero__cta { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 0.4rem; }
+
+/* Chip yang bisa di-drag & dilempar (demo momentum + rubber-band, §5/6/9). */
+
+/* Overlay kontras: radial gelap tipis terpusat di area judul. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(72% 68% at 32% 42%,
+    rgba(0, 0, 0, 0.22) 0%,
+    rgba(0, 0, 0, 0.12) 42%,
+    rgba(0, 0, 0, 0) 72%);
+}
+
+.hero > .eyebrow,
+.hero > .hero__title,
+.hero > .hero__lede,
+.hero > .hero__cta { position: relative; z-index: 2; }
+
+/* Text always dark ink for contrast over bright gradient */
+.hero .eyebrow { color: rgba(255, 255, 255, 0.85); }
+.hero .hero__title { color: #ffffff; }
+.hero .hero__lede { color: rgba(255, 255, 255, 0.90); }
+
+/* ---------- frost content below hero (blurred, translucent panel) ---------- */
+.frost-content {
+  position: relative;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  .frost-content {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+/* Hapus fade transition karena tidak lagi dibutuhkan */
+.frost-content::before { display: none; }
+
+/* Lightweight glass variants for non-primary controls */
+.chip-glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--glass-brd);
+  box-shadow: var(--shadow-1);
+}
+.socials-glass a {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--glass-brd);
+  box-shadow: var(--shadow-1);
+  transition: transform 100ms var(--ease-out), background 0.2s;
+}
+.socials-glass a:hover {
+  background: color-mix(in srgb, var(--blue) 14%, transparent);
+}
+.socials-glass a:active { transform: scale(0.96); }
+
+/* Reduced transparency accessibility. */
+@media (prefers-reduced-transparency: reduce) {
+  .frost-content,
+  .chip-glass,
+  .socials-glass a,
+  .nav {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .frost-content::before { display: none; }
+}
+
+/* ---------- sections umum ---------- */
+section, .footer { padding: clamp(4rem, 10vh, 7rem) var(--space); }
+.section-head { 
+  max-width: 60ch; 
+  margin-bottom: 2.4rem;
+  /* Liquid glass — treatment identik dengan .btn--plain di hero */
+  background: rgba(29, 29, 31, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(5px) saturate(120%);
+  backdrop-filter: blur(5px) saturate(120%);
+  box-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.16),
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.10);
+  border-radius: 24px;
+  padding: 1.5rem 1.8rem;
+}
+.section-head p { color: var(--text-2); margin-top: 0.6rem; }
+
+/* ---------- about ---------- */
+.about__grid {
+  display: grid;
+  gap: 2.4rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .about__grid { grid-template-columns: 1.15fr 0.85fr; gap: 4rem; align-items: start; }
+}
+.about__text p { 
+  max-width: 58ch; 
+  margin-bottom: 1.1rem; 
+  color: var(--text); 
+  font-size: 1.28rem;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  /* Liquid glass — treatment identik dengan .btn--plain di hero */
+  background: rgba(29, 29, 31, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(5px) saturate(120%);
+  backdrop-filter: blur(5px) saturate(120%);
+  box-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.16),
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.10);
+  border-radius: 22px;
+  padding: 1.4rem 1.6rem;
+}
+.about__cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 520px) {
+  .about__cards { grid-template-columns: 1fr; }
+}
+
+/* Each stat = independent glass tile — riso-zine asymmetric treatment */
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 22px;
+  /* Liquid glass per tile */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.06);
+  /* Riso-zine asymmetric offset — each card leans differently */
+  transform: rotate(var(--rot, 0deg)) translateY(var(--ty, 0px));
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s ease;
+}
+.stat:hover {
+  transform: rotate(calc(var(--rot, 0deg) + 1deg)) translateY(calc(var(--ty, 0px) - 3px));
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark scheme overrides */
+@media (prefers-color-scheme: dark) {
+  .stat {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.45),
+      inset 0 1px 1px rgba(255, 255, 255, 0.15),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.25);
+  }
+  .stat:hover {
+    box-shadow:
+      0 8px 28px rgba(0, 0, 0, 0.55),
+      inset 0 1px 1px rgba(255, 255, 255, 0.22),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* Reduced transparency — strip glass, keep layout */
+@media (prefers-reduced-transparency: reduce) {
+  .stat {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: var(--hair);
+    box-shadow: var(--shadow-1);
+  }
+}
+
+/* Organic blob dot — replaces tiny bullet with expressive gradient shape */
+.stat__dot {
+  width: 36px;
+  height: 28px;
+  border-radius: 52% 48% 40% 60% / 55% 40% 60% 45%;
+  background: var(--dot-color, currentColor);
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--dot-color, currentColor) 45%, transparent),
+    inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  flex: none;
+  align-self: flex-start;
+  margin-top: 2px;
+  /* Subtle organic wobble via CSS animation (respects reduced motion) */
+  animation: blob-wobble 4s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+@keyframes blob-wobble {
+  0%   { border-radius: 52% 48% 40% 60% / 55% 40% 60% 45%; }
+  50%  { border-radius: 45% 55% 50% 50% / 60% 45% 55% 40%; }
+  100% { border-radius: 55% 45% 55% 45% / 40% 55% 45% 60%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stat__dot { animation: none; }
+}
+
+.stat__label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+/* Playful oversized count — riso-zine editorial feel */
+.stat__val {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text);
+  margin-top: 0.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Asymmetric riso-zine rotations per card (set via inline style from JS) */
+.stat:nth-child(1) { --rot:  1.2deg; --ty: -2px;  }
+.stat:nth-child(2) { --rot: -0.8deg; --ty:  1px;  }
+.stat:nth-child(3) { --rot:  0.6deg; --ty:  2px;  }
+.stat:nth-child(4) { --rot: -1.4deg; --ty: -1px;  }
+
+/* ---------- works: segmented control ---------- */
+.works__note { color: var(--text-2); max-width: 46ch; margin-top: 0.6rem; }
+.segmented {
+  position: relative;
+  display: inline-flex;
+  padding: 4px;
+  margin: 1.8rem 0 2.4rem;
+  border-radius: 14px;
+  background: var(--seg-track);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  touch-action: none;             /* container jadi area drag scrub (§6) */
+}
+.segmented::-webkit-scrollbar { display: none; }
+.segmented__thumb {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  border-radius: 10px;
+  background: var(--seg-thumb);
+  box-shadow: var(--shadow-1);
+  pointer-events: none;           /* biar klik tembus ke tombol segmen */
+  will-change: transform, width;
+}
+.seg {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.seg__dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.seg[aria-selected="false"] { color: var(--text-2); }
+
+/* ---------- works: grid & kartu ---------- */
+.works__grid {
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+}
+.card {
+  position: relative;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.10) 100%
+  );
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.10),
+    inset 0 1px 1px rgba(255, 255, 255, 0.30);
+  overflow: hidden;
+  cursor: pointer;
+  /* hover/press = micro-state, boleh CSS. Drag-driven tetap di JS. */
+  transition: transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
+}
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: linear-gradient(
+      135deg,
+      rgba(45, 45, 48, 0.45) 0%,
+      rgba(45, 45, 48, 0.25) 100%
+    );
+    border-color: rgba(255, 255, 255, 0.10);
+    box-shadow:
+      0 6px 24px rgba(0, 0, 0, 0.35),
+      inset 0 1px 1px rgba(255, 255, 255, 0.10);
+  }
+}
+.card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); }
+.card.is-pressed { transform: scale(0.975); box-shadow: var(--shadow-1); }
+.card__cover {
+  position: relative;
+  aspect-ratio: var(--cover-ratio, 4 / 3);
+  display: flex;
+  align-items: flex-end;
+  padding: 0.8rem;
+  background:
+    radial-gradient(120% 120% at 80% 0%, color-mix(in srgb, var(--c) 55%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--c) 30%, var(--surface)), var(--surface));
+}
+.card__index {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: 0.02em;
+}
+.card__cat {
+  position: absolute;
+  top: 0.8rem; left: 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 980px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.card__play {
+  position: absolute;
+  top: 0.7rem; right: 0.7rem;
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.card__play svg { width: 13px; height: 13px; fill: var(--text); }
+.card__body { padding: 0.95rem 1.05rem 1.15rem; }
+.card__title { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
+.card__desc { margin-top: 0.35rem; font-size: 0.92rem; color: var(--text-2); line-height: 1.45; }
+.card__year { margin-top: 0.7rem; font-size: 0.8rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.works__empty {
+  margin-top: 1rem;
+  padding: 2.5rem;
+  text-align: center;
+  color: var(--text-2);
+  border: 1px dashed var(--hair);
+  border-radius: var(--radius);
+}
+
+/* ---------- tools ---------- */
+.tools__wrap { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.chip {
+  padding: 0.55rem 1.1rem;
+  border-radius: 980px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: default;
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 100ms var(--ease-out);
+}
+@media (prefers-color-scheme: dark) {
+  .chip {
+    background: rgba(45, 45, 48, 0.5);
+    border-color: rgba(255, 255, 255, 0.10);
+  }
+}
+.chip.is-pressed { transform: scale(0.95); }
+
+/* ---------- footer ---------- */
+.footer { text-align: left; }
+.footer__actions { margin-top: 1.6rem; display: flex; gap: 0.8rem; flex-wrap: wrap; }
+.socials { list-style: none; margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.socials a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 980px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 100ms var(--ease-out);
+}
+@media (prefers-color-scheme: dark) {
+  .socials a {
+    background: rgba(45, 45, 48, 0.5);
+    border-color: rgba(255, 255, 255, 0.10);
+  }
+}
+.socials a:hover { transform: translateY(-1px); }
+.socials a:active { transform: scale(0.96); }
+.socials .handle { color: var(--text-2); font-weight: 400; font-size: 0.85rem; }
+.footer__meta { margin-top: 2.6rem; color: var(--text-2); font-size: 0.85rem; }
+
+/* ============================================================
+   Bottom sheet (draggable, drag-to-dismiss).
+   Transform-Y & scrim opacity dikontrol spring di JS.
+   ============================================================ */
+.sheet-root { position: fixed; inset: 0; z-index: 300; }
+.sheet-root[hidden] { display: none; }
+.sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;                    /* §12: dim to focus — JS menaikkan seiring sheet naik */
+  will-change: opacity;
+}
+.sheet {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  margin-inline: auto;
+  width: min(720px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-2);
+  transform: translate3d(0, 100%, 0);   /* mulai tersembunyi di bawah */
+  touch-action: none;
+  will-change: transform;
+  overscroll-behavior: contain;
+}
+.sheet__grab {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  padding: 0.8rem;
+  cursor: grab;
+  touch-action: none;
+}
+.sheet__grab:active { cursor: grabbing; }
+.sheet__handle { width: 40px; height: 5px; border-radius: 3px; background: rgba(120, 120, 128, 0.5); }
+.sheet__content {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--space) calc(var(--space) + env(safe-area-inset-bottom, 0px));
+}
+.sheet__cat { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
+.sheet__title { font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; margin: 0.3rem 0; }
+.sheet__meta { color: var(--text-2); margin-bottom: 1.2rem; }
+.sheet__player {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  overflow: hidden;
+  /* Glass placeholder background — matches sheet.thick aesthetic */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  padding: 1.4rem;
+}
+/* Dark scheme */
+@media (prefers-color-scheme: dark) {
+  .sheet__player {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    );
+    border-color: rgba(255, 255, 255, 0.10);
+  }
+}
+.sheet__player video,
+.sheet__player iframe { width: 100%; height: 100%; position: absolute; inset: 0; }
+.sheet__placeholder {
+  color: var(--text-2);
+  text-align: center;
+  font-size: 0.92rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 280px;
+}
+/* Play icon anchor */
+.sheet__placeholder::before {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.30);
+  /* SVG triangle play icon rendered via inline SVG background */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M8 5v14l11-7z' fill='rgba(255,255,255,0.85)' stroke='rgba(255,255,255,0.5)' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 22px 22px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* Styled code inline elements */
+.sheet__placeholder code {
+  display: inline-block;
+  padding: 0.15em 0.45em;
+  border-radius: 6px;
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+  font-size: 0.82em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+@media (prefers-color-scheme: dark) {
+  .sheet__placeholder code {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.10);
+  }
+}
+.sheet__close { margin: 1.2rem 0 0.4rem; }
+body.sheet-open { overflow: hidden; }
+
+/* ---------- reduced motion (§14) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .card:hover { transform: none; }
+}

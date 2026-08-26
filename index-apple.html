@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Portofolio — Varian Apple</title>
+  <meta name="description" content="Varian portofolio bergaya Apple: fluid motion, spring animation, material translucent, liquid glass buttons." />
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+  <link rel="stylesheet" href="css/apple.css" />
+</head>
+<body>
+  <!-- Stage full-page background canvas (NeatGradient animated background) -->
+  <div class="ambient" aria-hidden="true">
+    <canvas id="gradient-bg"></canvas>
+  </div>
+
+  <header class="nav" data-nav>
+    <a class="nav__logo" href="#hero" data-logo>Nama</a>
+    <nav class="nav__links" aria-label="Navigasi utama">
+      <a href="#hero">Home</a>
+      <a href="#about">About</a>
+      <a href="#work">Work</a>
+      <a href="#tools">Tools</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ HERO (jernih, langsung terekspos gradient) ============ -->
+    <section class="hero" id="hero">
+      <p class="eyebrow" data-kicker></p>
+      <h1 class="hero__title" data-hero-title></h1>
+      <p class="hero__lede" data-hero-tag></p>
+      <div class="hero__cta">
+        <a class="btn btn--plain glass-btn--interactive" href="#work">View Work</a>
+        <a class="btn btn--plain glass-btn--interactive" href="#contact">Contact</a>
+      </div>
+
+    </section>
+
+    <!-- ============ CONTENT BELOW HERO (frosted glass blur layer) ============ -->
+    <div class="frost-content">
+      <!-- ============ ABOUT ============ -->
+      <section class="about" id="about">
+        <div class="section-head">
+          <h2 class="h-section">About Me</h2>
+        </div>
+        <div class="about__grid">
+          <div class="about__text" data-about></div>
+          <aside class="about__cards" data-about-cards aria-label="Work category summary"></aside>
+        </div>
+      </section>
+
+      <!-- ============ WORKS ============ -->
+      <section class="works" id="work">
+        <div class="section-head">
+          <h2 class="h-section">Work</h2>
+          <p class="works__note">Explore selected works by category or swipe through the cards.</p>
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="Category filter" data-segmented>
+          <span class="segmented__thumb" data-thumb aria-hidden="true"></span>
+          <!-- tombol segmen di-inject oleh apple.js -->
+        </div>
+
+        <div class="works__grid" data-grid></div>
+        <p class="works__empty" data-empty hidden>No work in this category yet.</p>
+      </section>
+
+      <!-- ============ TOOLS ============ -->
+      <section class="tools" id="tools">
+        <div class="section-head">
+          <h2 class="h-section">Alat</h2>
+        </div>
+        <div class="tools__wrap" data-tools></div>
+      </section>
+
+      <!-- ============ CONTACT / FOOTER ============ -->
+      <footer class="footer" id="contact">
+        <div class="section-head">
+          <h2 class="h-section">Ada proyek, lomba, atau dokumentasi?</h2>
+        </div>
+        <div class="footer__actions" data-footer-actions></div>
+        <ul class="socials" data-socials></ul>
+        <p class="footer__meta">Dibuat sendiri, dikerjakan di antara jam pelajaran. <span data-year></span></p>
+      </footer>
+    </div>
+  </main>
+
+  <!-- ============ BOTTOM SHEET (draggable) ============ -->
+  <div class="sheet-root" data-sheet-root hidden>
+    <div class="sheet__scrim" data-sheet-scrim></div>
+    <section class="sheet glass-thick" data-sheet role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet__grab" data-sheet-drag aria-hidden="true"><span class="sheet__handle"></span></div>
+      <div class="sheet__content">
+        <p class="sheet__cat eyebrow" data-sheet-cat></p>
+        <h3 class="sheet__title" id="sheetTitle" data-sheet-title></h3>
+        <p class="sheet__meta" data-sheet-meta></p>
+        <div class="sheet__player">
+          <video controls playsinline preload="none" data-sheet-video hidden></video>
+          <iframe data-sheet-instagram hidden frameborder="0" scrolling="no" allowtransparency="true" allow="encrypted-media"></iframe>
+          <p class="sheet__placeholder" data-sheet-placeholder>
+            Video belum ditautkan. Isi field <code>video</code> atau <code>instagram</code> di <code>js/data.js</code>.
+          </p>
+        </div>
+        <button class="btn btn--plain sheet__close" type="button" data-sheet-close>Tutup</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/apple.js" defer></script>
+  <script type="module" src="js/apple-background.js"></script>
+</body>
+</html>
